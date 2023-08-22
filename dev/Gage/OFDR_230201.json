@@ -1,0 +1,51 @@
+{
+    "Acquisition": {
+        "Mode": 2,
+        "SampleRate": "10 MS/s",
+        "Depth": 25000,
+        "SegmentSize": 25000,
+        "SegmentCount": 1,
+        "TriggerHoldOff": 0,
+        "TriggerDelay": 0,
+        "TriggerTimeout": 300000000,
+        "ExtClk": 0
+    },
+    "Channel1": {
+        "InputRange": 10000,
+        "Coupling": "DC",
+        "Impedance": 50,
+        "DcOffset": 0
+    },
+    "Channel3": {
+        "InputRange": 10000,
+        "Coupling": "DC",
+        "Impedance": 50,
+        "DcOffset": 0
+    },
+    "Trigger1": {
+        "Condition": "Rising",
+        "Level": 50,
+        "Source": -1,
+        "ExtCoupling": "DC",
+        "ExtRange": 10000,
+        "ExtImpedance": 50
+    },
+    "Application": {
+        "StartPosition": 0,
+        "TransferLength": 25000,
+        "SaveFileName": "Acquire",
+        "SaveFileFormat": "TYPE_FLOAT"
+    },
+    "Channel2": {
+        "InputRange": 10000,
+        "Coupling": "DC",
+        "Impedance": 50,
+        "DcOffset": 0
+    },
+    "Channel4": {
+        "InputRange": 10000,
+        "Coupling": "DC",
+        "Impedance": 50,
+        "DcOffset": 0
+    }
+}
