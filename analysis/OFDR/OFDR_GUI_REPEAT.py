@@ -10,6 +10,7 @@ import time,sys,traceback,os,json,configparser
 import numpy as np
 import scipy as sp
 import pandas as pd
+import threading
 from scipy.signal import find_peaks
 from analysis_tools import *
 from dev import *
@@ -20,6 +21,7 @@ sys.path.append('../..')
 
 form_class_Analysis_OFDR = uic.loadUiType('C:\\GUI\\analysis\\OFDR\\OFDR.ui')[0]
 class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
+    work_requested = pyqtSignal(int,int)
     def __init__(self,*args,**kwargs):
         self.threadpool=QThreadPool()
         super(QMainWindow, self).__init__()
@@ -38,6 +40,17 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.peak_start = int(sys.argv[4])
         self.peak_end = int(sys.argv[5])
         self.file_path = sys.argv[6]
+
+        self.worker = Worker()
+        self.worker_thread = QThread()
+        self.worker.progress.connect(self.update_progress)
+
+
+        self.work_requested.connect(self.worker.do_work)
+
+        self.worker.moveToThread(self.worker_thread)
+
+        self.worker_thread.start()
 
     def init_connection(self):
         if 'tel' in dir(self):
@@ -78,18 +91,25 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.channel_data=s[0]
         self.t_data=np.arange(0,s[1]['Common']['Length']/s[1]['Common']['SampleRate'],1/s[1]['Common']['SampleRate'])
         self.RunMessageplainTextEdit.appendPlainText('Receive ADC data')
-        
+
     def AutoMeasureButtonClicked(self):
+        self.start(self.iteration_time,self.total_time)
+    def RepeatMeasureButtonClicked(self):
+        print('cliecked')
 
         self.measuring=True
-        self.starttime=datetime.datetime.now()
+        self.start_time=datetime.datetime.now()
         self.AutoMeasurepushButton.setEnabled(False)
         self.AutoMeasurepushButton.setText('Measuring')
         with open('OFDR_Gage.json','r') as f:
             settings_dict_Gage=json.load(f)
         with open('OFDR_TLS_8164A.json','r') as f:
             settings_dict_TLS_8164A=json.load(f)
-            
+
+        def repeat_measure():
+            self.measured_time = datetime.datetime.now()
+            print("tes")
+
         def Run_worker_Run_TLS_8164A():
             self.measured_time = datetime.datetime.now()
             worker_Run_TLS_8164A=Work_Run_TLS_8164A(self.tel,settings_dict_TLS_8164A)
@@ -113,7 +133,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
             self.threadpool.start(worker_OFDR_Analysis)
             self.RunMessageplainTextEdit.appendPlainText('Analyzing data...')
             self.statusBar().showMessage('Analyzing data...')
-            
+
         def Run_worker_Stop_TLS_8164A():
             worker_Stop_TLS_8164A=Work_Stop_TLS_8164A(self.tel)
             self.threadpool.start(worker_Stop_TLS_8164A)
@@ -122,14 +142,23 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
             self.AutoMeasurepushButton.setText('Auto Measure')
             self.measuring=False
 
-        # start_time = self.starttime + datetime.timedelta(seconds=10)
+        Run_worker_Run_TLS_8164A()
+
+
+
+
+
+
+
+
+        # # Start test a few secs from now.
+        # start_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
         # run_time = datetime.timedelta(minutes=self.total_time)  # How long to iterate function.
         # end_time = start_time + run_time
         #
         # assert start_time > datetime.datetime.now(), 'Start time must be in future'
         #
-        # timed_calls = TimedCalls(Run_worker_Run_TLS_8164A,
-        #                          self.iteration_time)  # Thread to call function every [iteration_time] secs.
+        # timed_calls = TimedCalls(Run_worker_Run_TLS_8164A, self.iteration_time)  # Thread to call function every [iteration_time] secs.
         #
         # print(f'waiting until {start_time.strftime("%H:%M:%S")} to begin...')
         # wait_time = start_time - datetime.datetime.now()
@@ -141,29 +170,8 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         #     time.sleep(1)  # Twiddle thumbs while waiting.
         # print('done at ', datetime.datetime.now().strftime("%H:%M:%S"))
         # timed_calls.cancel()
-        Run_worker_Run_TLS_8164A()
 
-    def RepeatMeasureButtonClicked(self):
 
-        # Start test a few secs from now.
-        start_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
-        run_time = datetime.timedelta(minutes=self.total_time)  # How long to iterate function.
-        end_time = start_time + run_time
-
-        assert start_time > datetime.datetime.now(), 'Start time must be in future'
-
-        timed_calls = TimedCalls(self.AutoMeasureButtonClicked, self.iteration_time)  # Thread to call function every [iteration_time] secs.
-
-        print(f'waiting until {start_time.strftime("%H:%M:%S")} to begin...')
-        wait_time = start_time - datetime.datetime.now()
-        time.sleep(wait_time.total_seconds())
-
-        print('starting ... until end time: ', end_time.strftime("%H:%M:%S"))
-        timed_calls.start()  # Start thread.
-        while datetime.datetime.now() < end_time:
-            time.sleep(1)  # Twiddle thumbs while waiting.
-        print('done at ', datetime.datetime.now().strftime("%H:%M:%S"))
-        timed_calls.cancel()
 
     def FindpeakButtonClicked(self):
         print('Not working')
@@ -201,7 +209,15 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
                     self.statusBar().showMessage('Processing complete')
                     self.RunMessageplainTextEdit.appendPlainText('Plot update complete')
                     self.save_data(x, y)
-            
+    def start(self,iteration_time,total_time):
+        print('yes')
+        self.work_requested.emit(iteration_time,total_time)
+        print(iteration_time,total_time)
+
+    def update_progress(self,i):
+        self.RepeatMeasureButtonClicked()
+
+
     def receive_processed_data(self,s):
         self.processed_data=s
         self.plot_processed_data()
@@ -217,6 +233,19 @@ class WorkerSignals(QObject):
     error=pyqtSignal(tuple)
     result=pyqtSignal(object)
     progress=pyqtSignal(int)
+
+class Worker(QObject):
+    progress= pyqtSignal(int,int)
+
+
+    @pyqtSlot(int,int)
+    def do_work(self,iteration_time,total_time):
+        for i in range(int(total_time*60/iteration_time)):
+            print(i)
+            self.progress.emit(i,i)
+            time.sleep(iteration_time)
+
+
 
 class Work_Analysis(QRunnable):
     def __init__(self,data,AUX_delay_length):
@@ -246,32 +275,20 @@ def main():
 
     result = 0
 
+    def ui_thread(app):
+        """a thread for QApplication event loop"""
+        app[0]=QApplication(sys.argv)
+        app[0].exec_()
     try:
-        app = QApplication(sys.argv)
-        mainWindow=Analysis_OFDR_Window()
+        app=QApplication(sys.argv)
+        w=Analysis_OFDR_Window()
         app.exec()
 
 
-        # Start test a few secs from now.
-        start_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
-        run_time = datetime.timedelta(minutes=total_time)  # How long to iterate function.
-        end_time = start_time + run_time
 
-        assert start_time > datetime.datetime.now(), 'Start time must be in future'
 
-        timed_calls = TimedCalls(mainWindow.AutoMeasureButtonClicked(), iteration_time)  # Thread to call function every [iteration_time] secs.
 
-        print(f'waiting until {start_time.strftime("%H:%M:%S")} to begin...')
-        wait_time = start_time - datetime.datetime.now()
-        time.sleep(wait_time.total_seconds())
 
-        print('starting ... until end time: ', end_time.strftime("%H:%M:%S"))
-        timed_calls.start()  # Start thread.
-        app.exec()
-        while datetime.datetime.now() < end_time:
-            time.sleep(1)  # Twiddle thumbs while waiting.
-        print('done at ', datetime.datetime.now().strftime("%H:%M:%S"))
-        timed_calls.cancel()
 
 
 

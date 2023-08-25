@@ -1,10 +1,12 @@
 import datetime
+
 from threading import Thread, Event
 import time
 from typing import Callable
+from PyQt5.QtCore import *
 
 
-class TimedCalls(Thread):
+class TimedCalls(QObject):
     """Call function again every `interval` time duration after it's first run."""
     def __init__(self, func: Callable, interval: datetime.timedelta) -> None:
         super().__init__()
