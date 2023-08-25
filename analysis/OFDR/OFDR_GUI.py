@@ -2,6 +2,9 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5 import uic
+
+import csv
+import datetime
 import pyqtgraph as pg
 import time,sys,traceback,os,json,configparser
 import numpy as np
@@ -9,21 +12,28 @@ import scipy as sp
 import pandas as pd
 from scipy.signal import find_peaks
 from analysis_tools import *
-sys.path.append('../..')
 from dev import *
-import icon_rc
+from TimedCalls import TimedCalls
+sys.path.append('../..')
+
+
 
 form_class_Analysis_OFDR = uic.loadUiType('C:\\GUI\\analysis\\OFDR\\OFDR.ui')[0]
 class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR):
-    def __init__(self,*args,**kwargs):
+    def __init__(self,test_id, peak_start=0, peak_end=0, file_path=os.getcwd()):
         self.threadpool=QThreadPool()
-        super(QMainWindow, self).__init__(*args, **kwargs)
+        super(QMainWindow, self).__init__()
         self.setupUi(self)
         self.show()
         self.threadpool=QThreadPool()
         self.plot_initialize()
         self.init_connection()
         self.measuring=False
+
+        self.test_id = test_id
+        self.peak_start = peak_start
+        self.peak_end = peak_end
+        self.file_path = file_path
 
     def init_connection(self):
         if 'tel' in dir(self):
@@ -66,6 +76,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR):
         self.RunMessageplainTextEdit.appendPlainText('Receive ADC data')
         
     def AutoMeasureButtonClicked(self):
+        self.measured_time=datetime.datetime.now()
         self.measuring=True
         self.AutoMeasurepushButton.setEnabled(False)
         self.AutoMeasurepushButton.setText('Measuring')
@@ -119,7 +130,9 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR):
             self.statusBar().showMessage('Plotting data...')
             if self.LogscalecheckBox.isChecked():
                 try:
-                    self.plt.setData(1000*np.pi*self.processed_data[0],20*np.log10(self.processed_data[1]))
+                    x=1000*np.pi*self.processed_data[0]
+                    y=20*np.log10(self.processed_data[1])
+                    self.plt.setData(x,y)
                 except:
                     self.statusBar().showMessage('Error occurred during plotting data')
                 else:
@@ -127,9 +140,12 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR):
                     self.OFDR_plot.setYRange(-140,-20)
                     self.statusBar().showMessage('Processing complete')
                     self.RunMessageplainTextEdit.appendPlainText('Plot update complete')
+                    self.save_data(x, y)
             else:
                 try:
-                    self.plt.setData(1000*np.pi*self.processed_data[0],self.processed_data[1]) # 아래 해설 참고
+                    x=1000*np.pi*self.processed_data[0]
+                    y=self.processed_data[1]
+                    self.plt.setData(x, y) # 아래 해설 참고
                 except:
                     self.statusBar().showMessage('Error occurred during plotting data')
                 else:
@@ -137,10 +153,17 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR):
                     self.OFDR_plot.setYRange(0,0.1)
                     self.statusBar().showMessage('Processing complete')
                     self.RunMessageplainTextEdit.appendPlainText('Plot update complete')
+                    self.save_data(x, y)
             
     def receive_processed_data(self,s):
         self.processed_data=s
         self.plot_processed_data()
+
+    def save_data(self,x,y):
+        arr = np.array([x,y])
+        arr = np.transpose(arr)
+        np.savetxt(self.file_path+'/'+self.test_id+'_'+self.measured_time.strftime('%Y%m%d%H%M')+'.csv', arr, delimiter=',', header='Distance,Reflection_Coefficient')
+        print('\n'+self.file_path+'/'+self.test_id+'_'+self.measured_time.strftime('%Y%m%d%H%M')+'.csv '+'saved')
 
 class WorkerSignals(QObject):
     finished=pyqtSignal()
@@ -166,8 +189,50 @@ class Work_Analysis(QRunnable):
         self.signals.finished.emit()
 
 
-if __name__ == "__main__":
-    app=QApplication(sys.argv)
-    mainWindow=Analysis_OFDR_Window()
-    app.exec()
+def main():
+    test_id = sys.argv[1]
+    iteration_time = int(sys.argv[2])
+    total_time = int(sys.argv[3])
+    peak_start = int(sys.argv[4])
+    peak_end = int(sys.argv[5])
+    file_path = sys.argv[6]
+
+    result = 0
+
+    try:
+        app = QApplication()
+        mainWindow=Analysis_OFDR_Window(test_id, iteration_time, total_time, peak_start, peak_end, file_path)
+        app.exec()
+
+        # Start test a few secs from now.
+        start_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
+        run_time = datetime.timedelta(minutes=total_time)  # How long to iterate function.
+        end_time = start_time + run_time
+
+        assert start_time > datetime.datetime.now(), 'Start time must be in future'
+
+        timed_calls = TimedCalls(mainWindow.AutoMeasureButtonClicked(), iteration_time)  # Thread to call function every [iteration_time] secs.
+
+        print(f'waiting until {start_time.strftime("%H:%M:%S")} to begin...')
+        wait_time = start_time - datetime.datetime.now()
+        time.sleep(wait_time.total_seconds())
+
+        print('starting ... until end time: ', end_time.strftime("%H:%M:%S"))
+        timed_calls.start()  # Start thread.
+        while datetime.datetime.now() < end_time:
+            time.sleep(1)  # Twiddle thumbs while waiting.
+        print('done at ', datetime.datetime.now().strftime("%H:%M:%S"))
+        timed_calls.cancel()
+
+
+
+
+    except Exception as e:
+        print(e)
+        result = 1
+    finally :
+        sys.exit(result)
+
+if __name__=='__main__':
+    main()
 
