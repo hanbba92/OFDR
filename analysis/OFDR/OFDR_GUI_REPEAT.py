@@ -95,7 +95,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
     def AutoMeasureButtonClicked(self):
         self.start(self.iteration_time,self.total_time)
     def RepeatMeasureButtonClicked(self):
-        print('cliecked')
+        print('clicked')
 
         self.measuring=True
         self.start_time=datetime.datetime.now()
@@ -106,9 +106,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         with open('OFDR_TLS_8164A.json','r') as f:
             settings_dict_TLS_8164A=json.load(f)
 
-        def repeat_measure():
-            self.measured_time = datetime.datetime.now()
-            print("tes")
+
 
         def Run_worker_Run_TLS_8164A():
             self.measured_time = datetime.datetime.now()
@@ -210,7 +208,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
                     self.RunMessageplainTextEdit.appendPlainText('Plot update complete')
                     self.save_data(x, y)
     def start(self,iteration_time,total_time):
-        print('yes')
+
         self.work_requested.emit(iteration_time,total_time)
         print(iteration_time,total_time)
 
@@ -226,7 +224,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         arr = np.array([x,y])
         arr = np.transpose(arr)
         np.savetxt(self.file_path+'/'+self.test_id+'_'+self.measured_time.strftime('%Y%m%d%H%M')+'.csv', arr, delimiter=',', header='Distance,Reflection_Coefficient')
-        print('\n'+self.file_path+'/'+self.test_id+'_'+self.measured_time.strftime('%Y%m%d%H%M')+'.csv '+'saved')
+        print(self.file_path+'/'+self.test_id+'_'+self.measured_time.strftime('%Y%m%d%H%M')+'.csv '+'saved.\n')
 
 class WorkerSignals(QObject):
     finished=pyqtSignal()
@@ -241,7 +239,7 @@ class Worker(QObject):
     @pyqtSlot(int,int)
     def do_work(self,iteration_time,total_time):
         for i in range(int(total_time*60/iteration_time)):
-            print(i)
+            print('click # ', i+1)
             self.progress.emit(i,i)
             time.sleep(iteration_time)
 
