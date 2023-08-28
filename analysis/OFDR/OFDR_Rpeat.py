@@ -19,7 +19,7 @@ sys.path.append('../..')
 
 
 
-form_class_Analysis_OFDR = uic.loadUiType('C:\\GUI\\analysis\\OFDR\\OFDR.ui')[0]
+form_class_Analysis_OFDR = uic.loadUiType('C:\\GUI\\analysis\\OFDR\\OFDR_Repeat.ui')[0]
 class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
     work_requested = pyqtSignal(int,int)
     def __init__(self,*args,**kwargs):
