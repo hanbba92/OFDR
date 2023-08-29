@@ -168,6 +168,7 @@ class Work_Stop_TLS_8164A(QRunnable):
         
     def run(self):
         self.tel.stop()
+        self.signals.finished.emit()
 
 class Work_Initialize_TLS_8164A(QRunnable):
     def __init__(self,tel):

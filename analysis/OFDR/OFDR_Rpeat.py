@@ -21,10 +21,12 @@ sys.path.append('../..')
 
 form_class_Analysis_OFDR = uic.loadUiType('C:\\GUI\\analysis\\OFDR\\OFDR_Repeat.ui')[0]
 class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
-    work_requested = pyqtSignal(int,int)
+
+
     def __init__(self,*args,**kwargs):
         self.threadpool=QThreadPool()
         super(QMainWindow, self).__init__()
+        self.count=0
 
 
         self.setupUi(self)
@@ -33,24 +35,13 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.plot_initialize()
         self.init_connection()
         self.measuring=False
-
+        self.IterationTimeText.setReadOnly(False)
+        self.IterationTimeText.setReadOnly(False)
         self.test_id = sys.argv[1]
-        self.iteration_time = int(sys.argv[2])
-        self.total_time = int(sys.argv[3])
-        self.peak_start = int(sys.argv[4])
-        self.peak_end = int(sys.argv[5])
-        self.file_path = sys.argv[6]
-
-        self.worker = Worker()
-        self.worker_thread = QThread()
-        self.worker.progress.connect(self.update_progress)
+        self.file_path = sys.argv[2]
 
 
-        self.work_requested.connect(self.worker.do_work)
 
-        self.worker.moveToThread(self.worker_thread)
-
-        self.worker_thread.start()
 
     def init_connection(self):
         if 'tel' in dir(self):
@@ -92,55 +83,114 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.t_data=np.arange(0,s[1]['Common']['Length']/s[1]['Common']['SampleRate'],1/s[1]['Common']['SampleRate'])
         self.RunMessageplainTextEdit.appendPlainText('Receive ADC data')
 
-    def AutoMeasureButtonClicked(self):
-        self.start(self.iteration_time,self.total_time)
     def RepeatMeasureButtonClicked(self):
-        print('clicked')
-
-        self.measuring=True
-        self.start_time=datetime.datetime.now()
+        self.total_iteration=self.count
+        self.measuring = True
+        self.start_time = datetime.datetime.now()
+        self.RepeatMeasurepushButton.setEnabled(False)
         self.AutoMeasurepushButton.setEnabled(False)
+        self.RepeatMeasurepushButton.setText('Measuring')
+
+
+        self.worker = WorkerSignals()
+        self.thread = QThread()
+        self.worker.moveToThread(self.thread)
+        self.IterationTimeText.setReadOnly(True)
+        self.TotalTimeText.setReadOnly(True)
+        global iteration_time, total_time
+        iteration_time=int(self.IterationTimeText.text())
+        total_time=int(self.TotalTimeText.text())
+        self.RunMessageplainTextEdit.appendPlainText('Iteration Time: {} sec, Total Time: {} min'.format(iteration_time,total_time))
+        self.total_iteration+=int(total_time*60/iteration_time)
+        self.thread.started.connect(self.worker.SetMeasurement)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.progress.connect(self.Run_worker_Run_TLS_8164A)
+        self.thread.start()
+
+
+
+
+
+
+
+
+    def AutoMeasureButtonClicked(self):
+
+        self.total_iteration = self.count+1
+        self.measuring = True
+        self.start_time = datetime.datetime.now()
+        self.AutoMeasurepushButton.setEnabled(False)
+        self.RepeatMeasurepushButton.setEnabled(False)
         self.AutoMeasurepushButton.setText('Measuring')
-        with open('OFDR_Gage.json','r') as f:
-            settings_dict_Gage=json.load(f)
-        with open('OFDR_TLS_8164A.json','r') as f:
-            settings_dict_TLS_8164A=json.load(f)
+        self.worker=WorkerSignals()
+        self.thread = QThread()
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.SingleMeasure)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.progress.connect(self.Run_worker_Run_TLS_8164A)
+
+        self.thread.start()
 
 
 
-        def Run_worker_Run_TLS_8164A():
-            self.measured_time = datetime.datetime.now()
-            worker_Run_TLS_8164A=Work_Run_TLS_8164A(self.tel,settings_dict_TLS_8164A)
-            worker_Run_TLS_8164A.signals.finished.connect(Run_worker_single_Gage)
-            self.threadpool.start(worker_Run_TLS_8164A)
-            self.RunMessageplainTextEdit.appendPlainText('TLS sweep start')
 
-        def Run_worker_single_Gage():
-            worker_single_Gage=Work_single_Gage(self.inst_Gage,settings_dict_Gage,'ascii')
-            worker_single_Gage.signals.result.connect(self.receive_data)
-            worker_single_Gage.signals.finished.connect(Run_worker_OFDR_Analysis)
-            self.threadpool.start(worker_single_Gage)
-            self.RunMessageplainTextEdit.appendPlainText('ADC_single start')
 
-        def Run_worker_OFDR_Analysis():
-            AUX_delay_length=20
-            self.data=np.vstack((self.t_data,self.channel_data))
-            worker_OFDR_Analysis=Work_Analysis(self.data,AUX_delay_length)
-            worker_OFDR_Analysis.signals.result.connect(self.receive_processed_data)
-            worker_OFDR_Analysis.signals.finished.connect(Run_worker_Stop_TLS_8164A)
-            self.threadpool.start(worker_OFDR_Analysis)
-            self.RunMessageplainTextEdit.appendPlainText('Analyzing data...')
-            self.statusBar().showMessage('Analyzing data...')
+    def Run_worker_Run_TLS_8164A(self):
 
-        def Run_worker_Stop_TLS_8164A():
-            worker_Stop_TLS_8164A=Work_Stop_TLS_8164A(self.tel)
-            self.threadpool.start(worker_Stop_TLS_8164A)
-            self.RunMessageplainTextEdit.appendPlainText('TLS stop')
-            self.AutoMeasurepushButton.setEnabled(True)
-            self.AutoMeasurepushButton.setText('Auto Measure')
-            self.measuring=False
+        with open('OFDR_TLS_8164A.json', 'r') as f:
+            settings_dict_TLS_8164A = json.load(f)
+        self.measured_time = datetime.datetime.now()
+        worker_Run_TLS_8164A=Work_Run_TLS_8164A(self.tel,settings_dict_TLS_8164A)
+        worker_Run_TLS_8164A.signals.finished.connect(self.Run_worker_single_Gage)
+        self.threadpool.start(worker_Run_TLS_8164A)
+        self.count += 1
+        self.RunMessageplainTextEdit.appendPlainText('# {}'.format(self.count))
+        self.RunMessageplainTextEdit.appendPlainText('TLS sweep start')
 
-        Run_worker_Run_TLS_8164A()
+    def Run_worker_single_Gage(self):
+        with open('OFDR_Gage.json', 'r') as f:
+            settings_dict_Gage = json.load(f)
+        worker_single_Gage=Work_single_Gage(self.inst_Gage,settings_dict_Gage,'ascii')
+        worker_single_Gage.signals.result.connect(self.receive_data)
+        worker_single_Gage.signals.finished.connect(self.Run_worker_OFDR_Analysis)
+        self.threadpool.start(worker_single_Gage)
+        self.RunMessageplainTextEdit.appendPlainText('ADC_single start')
+
+    def Run_worker_OFDR_Analysis(self):
+        AUX_delay_length=20
+        self.data=np.vstack((self.t_data,self.channel_data))
+        worker_OFDR_Analysis=(self.data,AUX_delay_length)Work_Analysis
+        worker_OFDR_Analysis.signals.result.connect(self.receive_processed_data)
+        worker_OFDR_Analysis.signals.finished.connect(self.Run_worker_Stop_TLS_8164A)
+        self.threadpool.start(worker_OFDR_Analysis)
+        self.RunMessageplainTextEdit.appendPlainText('Analyzing data...')
+        self.statusBar().showMessage('Analyzing data...')
+
+    def Run_worker_Stop_TLS_8164A(self):
+
+        worker_Stop_TLS_8164A=Work_Stop_TLS_8164A(self.tel)
+        self.threadpool.start(worker_Stop_TLS_8164A)
+        self.RunMessageplainTextEdit.appendPlainText('TLS stop')
+        print(self.total_iteration,self.count)
+        if self.total_iteration == self.count:
+            self.threadpool.start(self.Reset_Measure_Btn)
+
+
+
+
+
+    def Reset_Measure_Btn(self):
+        self.AutoMeasurepushButton.setEnabled(True)
+        self.RepeatMeasurepushButton.setEnabled(True)
+        self.AutoMeasurepushButton.setText('Single Measure')
+        self.RepeatMeasurepushButton.setText('Repeat Measure')
+        self.measuring = False
+        self.IterationTimeText.setReadOnly(False)
+        self.TotalTimeText.setReadOnly(False)
+
+
+
+
 
 
 
@@ -207,13 +257,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
                     self.statusBar().showMessage('Processing complete')
                     self.RunMessageplainTextEdit.appendPlainText('Plot update complete')
                     self.save_data(x, y)
-    def start(self,iteration_time,total_time):
 
-        self.work_requested.emit(iteration_time,total_time)
-        print(iteration_time,total_time)
-
-    def update_progress(self,i):
-        self.RepeatMeasureButtonClicked()
 
 
     def receive_processed_data(self,s):
@@ -222,26 +266,46 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
 
     def save_data(self,x,y):
         arr = np.array([x,y])
-        arr = np.transpose(arr)
-        np.savetxt(self.file_path+'/'+self.test_id+'_'+self.measured_time.strftime('%Y%m%d%H%M')+'.csv', arr, delimiter=',', header='Distance,Reflection_Coefficient')
-        print(self.file_path+'/'+self.test_id+'_'+self.measured_time.strftime('%Y%m%d%H%M')+'.csv '+'saved.\n')
+        self.RunMessageplainTextEdit.appendPlainText(self.file_path+'/'+self.test_id+'_'+self.measured_time.strftime('%Y%m%d%H%M')+'.npy '+'saved.')
+        np.save(self.file_path+'/'+self.test_id+'_'+self.measured_time.strftime('%Y%m%d%H%M')+'.npy', arr)
+
+
 
 class WorkerSignals(QObject):
+    single=pyqtSignal()
     finished=pyqtSignal()
     error=pyqtSignal(tuple)
     result=pyqtSignal(object)
-    progress=pyqtSignal(int)
-
-class Worker(QObject):
-    progress= pyqtSignal(int,int)
+    progress=pyqtSignal()
 
 
-    @pyqtSlot(int,int)
-    def do_work(self,iteration_time,total_time):
+
+
+
+
+    def SetMeasurement(self):
+
+
         for i in range(int(total_time*60/iteration_time)):
-            print('click # ', i+1)
-            self.progress.emit(i,i)
+            self.progress.emit()
             time.sleep(iteration_time)
+            self.finished.emit()
+
+
+
+    def SingleMeasure(self):
+
+        self.progress.emit()
+        self.finished.emit()
+
+
+
+
+
+
+    def SetTime(self,iteration_time,total_time):
+        self.settime.emit(iteration_time,total_time)
+
 
 
 
@@ -264,12 +328,6 @@ class Work_Analysis(QRunnable):
 
 
 def main():
-    test_id = sys.argv[1]
-    iteration_time = int(sys.argv[2])
-    total_time = int(sys.argv[3])
-    peak_start = int(sys.argv[4])
-    peak_end = int(sys.argv[5])
-    file_path = sys.argv[6]
 
     result = 0
 
@@ -281,15 +339,6 @@ def main():
         app=QApplication(sys.argv)
         w=Analysis_OFDR_Window()
         app.exec()
-
-
-
-
-
-
-
-
-
 
     except Exception as e:
         print(e)
