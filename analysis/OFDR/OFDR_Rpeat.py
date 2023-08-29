@@ -159,7 +159,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
     def Run_worker_OFDR_Analysis(self):
         AUX_delay_length=20
         self.data=np.vstack((self.t_data,self.channel_data))
-        worker_OFDR_Analysis=(self.data,AUX_delay_length)Work_Analysis
+        worker_OFDR_Analysis=Work_Analysis(self.data,AUX_delay_length)
         worker_OFDR_Analysis.signals.result.connect(self.receive_processed_data)
         worker_OFDR_Analysis.signals.finished.connect(self.Run_worker_Stop_TLS_8164A)
         self.threadpool.start(worker_OFDR_Analysis)
@@ -171,7 +171,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         worker_Stop_TLS_8164A=Work_Stop_TLS_8164A(self.tel)
         self.threadpool.start(worker_Stop_TLS_8164A)
         self.RunMessageplainTextEdit.appendPlainText('TLS stop')
-        print(self.total_iteration,self.count)
+        print(self.count+' / '+self.total_iteration)
         if self.total_iteration == self.count:
             self.threadpool.start(self.Reset_Measure_Btn)
 
