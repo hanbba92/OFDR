@@ -1,6 +1,7 @@
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
+from PyQt5.QtWebEngineWidgets import *
 from PyQt5 import uic
 
 import csv
@@ -17,9 +18,14 @@ from dev import *
 from TimedCalls import TimedCalls
 sys.path.append('../..')
 
+#TabWidget
+import plotly.offline as po
+import plotly.graph_objs as go
+import plotly.express as px
 
 
-form_class_Analysis_OFDR = uic.loadUiType('C:\\GUI\\analysis\\OFDR\\OFDR_Repeat.ui')[0]
+
+form_class_Analysis_OFDR = uic.loadUiType('C:\\GUI\\analysis\\OFDR\\OFDR_Repeat_plot.ui')[0]
 class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
 
 
@@ -40,6 +46,8 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.test_id = sys.argv[1]
         self.file_path = sys.argv[2]
 
+        #tab widget
+        self.AddPlotButton.clicked.connect(self.getFile)
 
 
 
@@ -82,6 +90,55 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.channel_data=s[0]
         self.t_data=np.arange(0,s[1]['Common']['Length']/s[1]['Common']['SampleRate'],1/s[1]['Common']['SampleRate'])
         self.RunMessageplainTextEdit.appendPlainText('Receive ADC data')
+
+
+    #Tab Widget
+    def getFile(self):
+        """This function wil get the address of the file location"""
+        self.filenames =QFileDialog.getOpenFileNames(directory=self.file_path)[0]
+        print("File: ",self.filenames)
+        self.filedims = len(self.filenames)
+        self.fig_list=[]
+        self.color_list=[
+                        '#1f77b4',  # muted blue
+                        '#ff7f0e',  # safety orange
+                        '#2ca02c',  # cooked asparagus green
+                        '#d62728',  # brick red
+                        '#9467bd',  # muted purple
+                        '#8c564b',  # chestnut brown
+                        '#e377c2',  # raspberry yogurt pink
+                        '#7f7f7f',  # middle gray
+                        '#bcbd22',  # curry yellow-green
+                        '#17becf'   # blue-teal
+                    ]
+        for i in range(self.filedims):
+            self.f=np.load(self.filenames[i])
+            self.fig_list.append( go.Scatter(name='plot'+self.filenames[i],
+                            x=self.f[0],
+                            y=self.f[1],
+                            mode='lines',
+                            line=dict(color=self.color_list[i])
+                            ))
+
+        self.fig = go.Figure(self.fig_list)
+        self.fig_view = self.show_qt(self.fig)
+
+    def show_qt(self,fig):
+        raw_html = '<html><head><meta charset="utf-8" />'
+        raw_html += '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script></head>'
+        raw_html += '<body>'
+        raw_html += po.plot(fig, include_plotlyjs=False, output_type='div')
+        raw_html += '</body></html>'
+
+
+
+        fig_view = self.MultiplePlotView
+        # setHtml has a 2MB size limit, need to switch to setUrl on tmp file
+        # for large figures.
+        fig_view.setHtml(fig.to_html(include_plotlyjs='cdn'))
+        fig_view.show()
+        fig_view.raise_()
+        return fig_view
 
     def RepeatMeasureButtonClicked(self):
         self.total_iteration=self.count
@@ -278,11 +335,7 @@ class WorkerSignals(QObject):
     result=pyqtSignal(object)
     progress=pyqtSignal()
 
-
-
-
-
-
+    @pyqtSlot()
     def SetMeasurement(self):
 
 
