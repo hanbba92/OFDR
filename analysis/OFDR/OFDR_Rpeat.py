@@ -171,7 +171,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         worker_Stop_TLS_8164A=Work_Stop_TLS_8164A(self.tel)
         self.threadpool.start(worker_Stop_TLS_8164A)
         self.RunMessageplainTextEdit.appendPlainText('TLS stop')
-        print(self.count+' / '+self.total_iteration)
+        print(self.count,' / ',self.total_iteration)
         if self.total_iteration == self.count:
             self.threadpool.start(self.Reset_Measure_Btn)
 
