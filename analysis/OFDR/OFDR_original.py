@@ -10,6 +10,7 @@ import time,sys,traceback,os,json,configparser
 import numpy as np
 import scipy as sp
 import pandas as pd
+import threading
 from scipy.signal import find_peaks
 from analysis_tools import *
 from dev import *
@@ -19,25 +20,16 @@ sys.path.append('../..')
 
 
 form_class_Analysis_OFDR = uic.loadUiType('C:\\GUI\\analysis\\OFDR\\OFDR_original.ui')[0]
-class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
-    def __init__(self,*args,**kwargs):
-        self.threadpool=QThreadPool()
-        super(QMainWindow, self).__init__()
-
-
-        self.setupUi(self)
-        self.show()
-        self.threadpool=QThreadPool()
-        self.plot_initialize()
+class OFDR(object):
+    def __init__(self,test_id,iteration_time,total_time,peak_start=0, peak_end = 0, file_path=os.getcwd()):
         self.init_connection()
         self.measuring=False
-
-        self.test_id = sys.argv[1]
-        self.iteration_time = int(sys.argv[2])
-        self.total_time = int(sys.argv[3])
-        self.peak_start = int(sys.argv[4])
-        self.peak_end = int(sys.argv[5])
-        self.file_path = sys.argv[6]
+        self.test_id = test_id
+        self.iteration_time = iteration_time
+        self.total_time = total_time
+        self.peak_start = peak_start
+        self.peak_end = peak_end
+        self.file_path = file_path
 
     def init_connection(self):
         if 'tel' in dir(self):
@@ -82,7 +74,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
     def AutoMeasureButtonClicked(self):
 
         self.measuring=True
-        self.starttime=datetime.datetime.now()
+        self.start_time=datetime.datetime.now()
         self.AutoMeasurepushButton.setEnabled(False)
         self.AutoMeasurepushButton.setText('Measuring')
         with open('OFDR_Gage.json','r') as f:
@@ -122,48 +114,30 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
             self.AutoMeasurepushButton.setText('Auto Measure')
             self.measuring=False
 
-        # start_time = self.starttime + datetime.timedelta(seconds=10)
-        # run_time = datetime.timedelta(minutes=self.total_time)  # How long to iterate function.
-        # end_time = start_time + run_time
-        #
-        # assert start_time > datetime.datetime.now(), 'Start time must be in future'
-        #
-        # timed_calls = TimedCalls(Run_worker_Run_TLS_8164A,
-        #                          self.iteration_time)  # Thread to call function every [iteration_time] secs.
-        #
-        # print(f'waiting until {start_time.strftime("%H:%M:%S")} to begin...')
-        # wait_time = start_time - datetime.datetime.now()
-        # time.sleep(wait_time.total_seconds())
-        #
-        # print('starting ... until end time: ', end_time.strftime("%H:%M:%S"))
-        # timed_calls.start()  # Start thread.
-        # while datetime.datetime.now() < end_time:
-        #     time.sleep(1)  # Twiddle thumbs while waiting.
-        # print('done at ', datetime.datetime.now().strftime("%H:%M:%S"))
-        # timed_calls.cancel()
-        Run_worker_Run_TLS_8164A()
-
-    def RepeatMeasureButtonClicked(self):
-
-        # Start test a few secs from now.
-        start_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
-        run_time = datetime.timedelta(minutes=self.total_time)  # How long to iterate function.
-        end_time = start_time + run_time
-
-        assert start_time > datetime.datetime.now(), 'Start time must be in future'
-
-        timed_calls = TimedCalls(self.AutoMeasureButtonClicked, self.iteration_time)  # Thread to call function every [iteration_time] secs.
-
-        print(f'waiting until {start_time.strftime("%H:%M:%S")} to begin...')
-        wait_time = start_time - datetime.datetime.now()
-        time.sleep(wait_time.total_seconds())
-
-        print('starting ... until end time: ', end_time.strftime("%H:%M:%S"))
-        timed_calls.start()  # Start thread.
-        while datetime.datetime.now() < end_time:
-            time.sleep(1)  # Twiddle thumbs while waiting.
-        print('done at ', datetime.datetime.now().strftime("%H:%M:%S"))
-        timed_calls.cancel()
+        for i in range(2):
+            self.threadpool.start(Run_worker_Run_TLS_8164A)
+            print(i)
+    # def RepeatMeasureButtonClicked(self):
+    #
+    #     # Start test a few secs from now.
+    #     start_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
+    #     run_time = datetime.timedelta(minutes=self.total_time)  # How long to iterate function.
+    #     end_time = start_time + run_time
+    #
+    #     assert start_time > datetime.datetime.now(), 'Start time must be in future'
+    #
+    #     timed_calls = TimedCalls(self.AutoMeasureButtonClicked, self.iteration_time)  # Thread to call function every [iteration_time] secs.
+    #
+    #     print(f'waiting until {start_time.strftime("%H:%M:%S")} to begin...')
+    #     wait_time = start_time - datetime.datetime.now()
+    #     time.sleep(wait_time.total_seconds())
+    #
+    #     print('starting ... until end time: ', end_time.strftime("%H:%M:%S"))
+    #     timed_calls.start()  # Start thread.
+    #     while datetime.datetime.now() < end_time:
+    #         time.sleep(1)  # Twiddle thumbs while waiting.
+    #     print('done at ', datetime.datetime.now().strftime("%H:%M:%S"))
+    #     timed_calls.cancel()
 
     def FindpeakButtonClicked(self):
         print('Not working')
@@ -246,32 +220,20 @@ def main():
 
     result = 0
 
+    def ui_thread(app):
+        """a thread for QApplication event loop"""
+        app[0]=QApplication(sys.argv)
+        app[0].exec_()
     try:
-        app = QApplication(sys.argv)
-        mainWindow=Analysis_OFDR_Window()
+        app=QApplication(sys.argv)
+        w=Analysis_OFDR_Window()
         app.exec()
+        app.thread
 
 
-        # Start test a few secs from now.
-        start_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
-        run_time = datetime.timedelta(minutes=total_time)  # How long to iterate function.
-        end_time = start_time + run_time
 
-        assert start_time > datetime.datetime.now(), 'Start time must be in future'
 
-        timed_calls = TimedCalls(mainWindow.AutoMeasureButtonClicked(), iteration_time)  # Thread to call function every [iteration_time] secs.
 
-        print(f'waiting until {start_time.strftime("%H:%M:%S")} to begin...')
-        wait_time = start_time - datetime.datetime.now()
-        time.sleep(wait_time.total_seconds())
-
-        print('starting ... until end time: ', end_time.strftime("%H:%M:%S"))
-        timed_calls.start()  # Start thread.
-        app.exec()
-        while datetime.datetime.now() < end_time:
-            time.sleep(1)  # Twiddle thumbs while waiting.
-        print('done at ', datetime.datetime.now().strftime("%H:%M:%S"))
-        timed_calls.cancel()
 
 
 
