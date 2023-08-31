@@ -16,7 +16,7 @@ from scipy.signal import find_peaks
 from analysis_tools import *
 sys.path.append('../..')
 from dev import *
-from TimedCalls import TimedCalls
+
 
 
 #TabWidget
