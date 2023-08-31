@@ -13,19 +13,7 @@
     <height>900</height>
    </rect>
   </property>
-  <property name="sizePolicy">
-   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-    <horstretch>0</horstretch>
-    <verstretch>0</verstretch>
-   </sizepolicy>
-  </property>
   <property name="minimumSize">
-   <size>
-    <width>1600</width>
-    <height>900</height>
-   </size>
-  </property>
-  <property name="maximumSize">
    <size>
     <width>1600</width>
     <height>900</height>
@@ -440,7 +428,7 @@
        <item>
         <widget class="QPushButton" name="AddPlotButton">
          <property name="text">
-          <string>Add Plot</string>
+          <string>Create Plot</string>
          </property>
         </widget>
        </item>

@@ -14,9 +14,10 @@ import pandas as pd
 import threading
 from scipy.signal import find_peaks
 from analysis_tools import *
+sys.path.append('../..')
 from dev import *
 from TimedCalls import TimedCalls
-sys.path.append('../..')
+
 
 #TabWidget
 import plotly.offline as po
@@ -25,7 +26,7 @@ import plotly.express as px
 
 
 
-form_class_Analysis_OFDR = uic.loadUiType('C:\\GUI\\analysis\\OFDR\\OFDR_Repeat_plot.ui')[0]
+form_class_Analysis_OFDR = uic.loadUiType('C:\\GUI\\analysis\\OFDR\\OFDR_Repeat_plot_2.ui')[0]
 class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
 
 
@@ -41,13 +42,20 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.plot_initialize()
         self.init_connection()
         self.measuring=False
+        self.iteration_start=False
+        self.data_path = 'C:/OFDR_DATA'
+        if len(sys.argv) > 2:
+            self.data_path = sys.argv[1]
         self.IterationTimeText.setReadOnly(False)
         self.IterationTimeText.setReadOnly(False)
-        self.test_id = sys.argv[1]
-        self.file_path = sys.argv[2]
+
+
+
+
 
         #tab widget
         self.AddPlotButton.clicked.connect(self.getFile)
+        self.plot_initialize_tab2()
 
 
 
@@ -93,10 +101,22 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
 
 
     #Tab Widget
+    def plot_initialize_tab2(self):
+        self.fig = go.Figure([])
+        self.fig.update_layout(
+            yaxis_title='Reflection_Coefficient (dB)',
+            xaxis_title='Distance (mm)',
+            title=dict(text= 'OFDR', x = 0.5, xanchor = 'center'),
+            hovermode='x',
+            legend=dict(yanchor='top', y=0.99, xanchor='left', x=0.01),
+            showlegend=True
+        )
+
+        self.show_qt(self.fig)
     def getFile(self):
         """This function wil get the address of the file location"""
-        self.filenames =QFileDialog.getOpenFileNames(directory=self.file_path)[0]
-        print("File: ",self.filenames)
+        self.filenames =QFileDialog.getOpenFileNames(directory=self.data_path)[0]
+        self.RunMessageplainTextEdit.appendPlainText('Updating Plot...')
         self.filedims = len(self.filenames)
         self.fig_list=[]
         self.color_list=[
@@ -111,17 +131,35 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
                         '#bcbd22',  # curry yellow-green
                         '#17becf'   # blue-teal
                     ]
-        for i in range(self.filedims):
-            self.f=np.load(self.filenames[i])
-            self.fig_list.append( go.Scatter(name='plot'+self.filenames[i],
-                            x=self.f[0],
-                            y=self.f[1],
-                            mode='lines',
-                            line=dict(color=self.color_list[i])
-                            ))
+        if self.filedims != 0:
+            for i in range(self.filedims):
+                if self.filenames[i][-3:] =='npy':
+                    self.f=np.load(self.filenames[i])
+                elif self.filenames[i][-3:] =='csv':
+                    self.f=np.loadtxt(self.filenames[i], delimiter=',', dtype='float64')
+                    self.f=self.f.transpose()
+                else:
+                    self.RunMessageplainTextEdit.appendPlainText('Invalid File Format. Accepted Formats: npy or csv')
+                    continue
+                self.fig_list.append( go.Scatter(name=self.filenames[i][-18:-4],
+                                x=self.f[0],
+                                y=self.f[1],
+                                mode='lines',
+                                line=dict(color=self.color_list[i])
+                                ))
 
-        self.fig = go.Figure(self.fig_list)
-        self.fig_view = self.show_qt(self.fig)
+            self.fig = go.Figure(self.fig_list)
+            self.fig.update_layout(
+                yaxis_title='Reflection_Coefficient (dB)',
+                xaxis_title='Distance (mm)',
+                title=dict(text=self.filenames[0][-27:-19], x = 0.5, xanchor = 'center'),
+                hovermode='x',
+                legend=dict(yanchor='top', y=0.99, xanchor='left', x=0.01),
+                showlegend=True
+            )
+
+            self.show_qt(self.fig)
+
 
     def show_qt(self,fig):
         raw_html = '<html><head><meta charset="utf-8" />'
@@ -132,37 +170,51 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
 
 
 
-        fig_view = self.MultiplePlotView
+        self.fig_view = self.MultiplePlotView
         # setHtml has a 2MB size limit, need to switch to setUrl on tmp file
         # for large figures.
-        fig_view.setHtml(fig.to_html(include_plotlyjs='cdn'))
-        fig_view.show()
-        fig_view.raise_()
-        return fig_view
+        fig.write_html('C:/NONE/file.html')
+        self.fig_view.load(QUrl.fromLocalFile('C:/NONE/file.html'))
+        self.fig_view.show()
+        if fig['data']:
+            self.RunMessageplainTextEdit.appendPlainText('Plot Update Completed!')
+
 
     def RepeatMeasureButtonClicked(self):
-        self.total_iteration=self.count
-        self.measuring = True
-        self.start_time = datetime.datetime.now()
-        self.RepeatMeasurepushButton.setEnabled(False)
-        self.AutoMeasurepushButton.setEnabled(False)
-        self.RepeatMeasurepushButton.setText('Measuring')
-
-
-        self.worker = WorkerSignals()
-        self.thread = QThread()
-        self.worker.moveToThread(self.thread)
-        self.IterationTimeText.setReadOnly(True)
-        self.TotalTimeText.setReadOnly(True)
-        global iteration_time, total_time
-        iteration_time=int(self.IterationTimeText.text())
-        total_time=int(self.TotalTimeText.text())
-        self.RunMessageplainTextEdit.appendPlainText('Iteration Time: {} sec, Total Time: {} min'.format(iteration_time,total_time))
-        self.total_iteration+=int(total_time*60/iteration_time)
-        self.thread.started.connect(self.worker.SetMeasurement)
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.progress.connect(self.Run_worker_Run_TLS_8164A)
-        self.thread.start()
+        self.model_number = self.ModelSerialNumber.text()
+        if len(self.model_number) == 0:
+            self.RunMessageplainTextEdit.appendPlainText('Please Insert Model S/N')
+        else:
+            self.ModelSerialNumber.setReadOnly(True)
+            self.save_file_path = self.data_path + '/' + self.model_number
+            try:
+                global iteration_time, total_time
+                iteration_time = int(self.IterationTimeText.text())
+                self.IterationTimeText.setReadOnly(True)
+                total_time = int(self.TotalTimeText.text())
+                self.TotalTimeText.setReadOnly(True)
+                self.RepeatMeasurepushButton.setEnabled(False)
+                self.AutoMeasurepushButton.setEnabled(False)
+            except Exception as e:
+                self.RunMessageplainTextEdit.appendPlainText('Please Insert Integer Values in Iteration Time(s) and Total Time(min)')
+            else:
+                self.iteration_start=True
+                self.total_iteration=self.count
+                self.measuring = True
+                self.start_time = datetime.datetime.now()
+                self.RepeatMeasurepushButton.setText('Measuring')
+                self.worker = WorkerSignals()
+                self.thread = QThread()
+                self.worker.moveToThread(self.thread)
+                self.IterationTimeText.setReadOnly(True)
+                self.TotalTimeText.setReadOnly(True)
+                self.RunMessageplainTextEdit.appendPlainText('Iteration Time: {} sec, Total Time: {} min'.format(iteration_time,total_time))
+                self.total_iteration+=int(total_time*60/iteration_time)
+                self.thread.started.connect(self.worker.SetMeasurement)
+                self.worker.finished.connect(self.thread.quit)
+                self.worker.finished.connect(self.Reset_Measure_Btn)
+                self.worker.progress.connect(self.Run_worker_Run_TLS_8164A)
+                self.thread.start()
 
 
 
@@ -172,24 +224,39 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
 
 
     def AutoMeasureButtonClicked(self):
+        self.model_number = self.ModelSerialNumber.text()
+        if len(self.model_number) == 0:
+            self.RunMessageplainTextEdit.appendPlainText('Please Insert Model S/N')
+        else:
+            self.ModelSerialNumber.setReadOnly(True)
+            self.save_file_path = self.data_path + '/' + self.model_number
+            self.AutoMeasurepushButton.setEnabled(False)
+            self.RepeatMeasurepushButton.setEnabled(False)
+            self.total_iteration = self.count+1
+            self.measuring = True
+            self.start_time = datetime.datetime.now()
 
-        self.total_iteration = self.count+1
-        self.measuring = True
-        self.start_time = datetime.datetime.now()
-        self.AutoMeasurepushButton.setEnabled(False)
-        self.RepeatMeasurepushButton.setEnabled(False)
-        self.AutoMeasurepushButton.setText('Measuring')
-        self.worker=WorkerSignals()
-        self.thread = QThread()
-        self.worker.moveToThread(self.thread)
-        self.thread.started.connect(self.worker.SingleMeasure)
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.progress.connect(self.Run_worker_Run_TLS_8164A)
-
-        self.thread.start()
+            self.AutoMeasurepushButton.setText('Measuring')
+            self.worker=WorkerSignals()
+            self.thread = QThread()
+            self.worker.moveToThread(self.thread)
+            self.thread.started.connect(self.worker.SingleMeasure)
+            self.worker.finished.connect(self.thread.quit)
+            self.worker.progress.connect(self.Run_worker_Run_TLS_8164A)
+            self.thread.start()
 
 
 
+
+    def StopButtonClicked(self):
+        if self.measuring:
+            self.RunMessageplainTextEdit.appendPlainText('Cannot stop while measuring')
+        else:
+            if self.iteration_start:
+                self.iteration_start = False
+                self.threadpool.start(self.worker.BreakLoop)
+                self.threadpool.start(self.Reset_Measure_Btn)
+                self.RunMessageplainTextEdit.appendPlainText('Iteration Stopped')
 
 
     def Run_worker_Run_TLS_8164A(self):
@@ -228,7 +295,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         worker_Stop_TLS_8164A=Work_Stop_TLS_8164A(self.tel)
         self.threadpool.start(worker_Stop_TLS_8164A)
         self.RunMessageplainTextEdit.appendPlainText('TLS stop')
-        print(self.count,' / ',self.total_iteration)
+        self.measuring = False
         if self.total_iteration == self.count:
             self.threadpool.start(self.Reset_Measure_Btn)
 
@@ -244,6 +311,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.measuring = False
         self.IterationTimeText.setReadOnly(False)
         self.TotalTimeText.setReadOnly(False)
+        self.ModelSerialNumber.setReadOnly(False)
 
 
 
@@ -323,8 +391,11 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
 
     def save_data(self,x,y):
         arr = np.array([x,y])
-        self.RunMessageplainTextEdit.appendPlainText(self.file_path+'/'+self.test_id+'_'+self.measured_time.strftime('%Y%m%d%H%M')+'.npy '+'saved.')
-        np.save(self.file_path+'/'+self.test_id+'_'+self.measured_time.strftime('%Y%m%d%H%M')+'.npy', arr)
+        if not os.path.exists(self.save_file_path):
+            os.mkdir(self.save_file_path)
+        self.file_path=self.save_file_path+'/'+self.measured_time.strftime('%Y%m%d%H%M%S')
+        self.RunMessageplainTextEdit.appendPlainText(self.file_path+'.npy'+' saved.')
+        np.save(self.file_path+'.npy', arr)
 
 
 
@@ -334,17 +405,31 @@ class WorkerSignals(QObject):
     error=pyqtSignal(tuple)
     result=pyqtSignal(object)
     progress=pyqtSignal()
+    iterationstop=pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self.loop=False
+
 
     @pyqtSlot()
     def SetMeasurement(self):
+        self.loop=True
 
 
         for i in range(int(total_time*60/iteration_time)):
+            if not self.loop:
+                break
             self.progress.emit()
-            time.sleep(iteration_time)
-            self.finished.emit()
+            for _ in range(iteration_time):
+                if not self.loop:
+                    break
+                time.sleep(1)
+        self.finished.emit()
 
 
+    def BreakLoop(self):
+        self.loop =False
 
     def SingleMeasure(self):
 
@@ -389,6 +474,7 @@ def main():
         app[0]=QApplication(sys.argv)
         app[0].exec_()
     try:
+        sys.argv.append("--disable-web-security")
         app=QApplication(sys.argv)
         w=Analysis_OFDR_Window()
         app.exec()

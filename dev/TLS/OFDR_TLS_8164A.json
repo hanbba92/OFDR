@@ -1,7 +1,7 @@
 {
     "path": "HighPower",
     "power": "001.000",
-    "start_wl": "1520",
-    "stop_wl": "1620",
+    "start_wl": "1530",
+    "stop_wl": "1570",
     "speed": "40nm/s"
 }
