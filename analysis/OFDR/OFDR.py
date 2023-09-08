@@ -45,6 +45,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.iteration_start=False
         self.data_path = 'C:/OFDR_DATA'
         if len(sys.argv) > 2:
+            print(sys.argv[1])
             self.data_path = sys.argv[1]
         self.IterationTimeText.setReadOnly(False)
         self.IterationTimeText.setReadOnly(False)
@@ -301,6 +302,8 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.save_data(x, y)
         self.measuring = False
         if self.total_iteration == self.count:
+            self.iteration_start = False
+            self.threadpool.start(self.worker.BreakLoop)
             self.threadpool.start(self.Reset_Measure_Btn)
 
 
@@ -396,7 +399,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
     def save_data(self,x,y):
         arr = np.array([x,y])
         if not os.path.exists(self.save_file_path):
-            os.mkdir(self.save_file_path)
+            os.makedirs(self.save_file_path)
         self.file_path=self.save_file_path+'/'+self.measured_time.strftime('%Y%m%d%H%M%S')
         self.RunMessageplainTextEdit.appendPlainText(self.file_path+'.npy'+' saved.')
         np.save(self.file_path+'.npy', arr)
@@ -425,10 +428,10 @@ class WorkerSignals(QObject):
             if not self.loop:
                 break
             self.progress.emit()
-            for _ in range(iteration_time):
+            for _ in range(iteration_time*2):
                 if not self.loop:
                     break
-                time.sleep(1)
+                time.sleep(0.5)
         self.finished.emit()
 
 
