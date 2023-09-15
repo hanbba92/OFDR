@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtWebEngineWidgets import *
 from PyQt5 import uic
-
+import pyvisa
 import csv
 import datetime
 import pyqtgraph as pg
@@ -69,6 +69,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.Connection_TLS_8164A_w.to_main_signals.result.connect(self.receive_tel)
         self.Connection_TLS_8164A_w.show()
         self.inst_Gage=Razor_express()
+
 
     def plot_initialize(self):
         self.OFDR_plot.plotItem.getViewBox().setMouseMode(pg.ViewBox.RectMode)
@@ -397,12 +398,35 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.plot_processed_data()
 
     def save_data(self,x,y):
+
         arr = np.array([x,y])
         if not os.path.exists(self.save_file_path):
             os.makedirs(self.save_file_path)
-        self.file_path=self.save_file_path+'/'+self.measured_time.strftime('%Y%m%d%H%M%S')
+        rm = pyvisa.ResourceManager()
+        self.my_instrument = 0
+        for i in rm.list_resources():
+            if i[0] == 'G':
+                self.my_instrument = rm.open_resource(i)
+                break
+        if self.my_instrument:
+            self.message = self.my_instrument.query('TEMP?')
+            self.cur_temp=self.message.split(',')[0]
+        else:
+            self.cur_temp= 'NONE'
+
+        self.file_path=self.save_file_path+'/'+self.measured_time.strftime('%Y_%m_%d_%H.%M.%S_')+self.cur_temp
         self.RunMessageplainTextEdit.appendPlainText(self.file_path+'.npy'+' saved.')
         np.save(self.file_path+'.npy', arr)
+
+    def mon(self,cmd):
+        self.message=self.instrument.query(cmd)
+
+    def get_temp(self,my_instrument):
+        self.instrument=my_instrument
+        return self.mon('TEMP?')
+
+    def no_chamber(self,my_instrument):
+        self.message='None'
 
 
 
