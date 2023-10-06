@@ -139,23 +139,23 @@ def Find_Average(Data,Data_type,threshold):
 #
 # plt.title("M0003701 vs M0003709")
 
-bins=[1,2,3,4,5,6]
-temp=[-40,-30,-15,0,15,30]
+bins=[1,2,3,4]
+temp=[-40,-30,0,30]
 
 
-# M0003709
+# M0003701
 
 
-folder_path='C:\OFDR_DATA/M0003709'
+folder_path='C:/OFDR_DATA_FOR_GRAPH/M0003701'
 file_list=os.listdir(folder_path)
 Peak_Data=[[],[]]
 
-Input_Start=3183
-Input_End=3201
-Output_Start = 3201
-Output_End = 3219
-threshold_1=-92
-count=10
+Input_Start=2565
+Input_End=2573
+Output_Start = 2597
+Output_End = 2602
+threshold_1=-90
+count=2
 
 Peak_Data= Collect_Peak_Data(bins,count,folder_path,file_list,Input_Start,Input_End,Output_Start,Output_End,threshold_1,0)
 
@@ -163,7 +163,68 @@ Average_Input_Data=Find_Average(Peak_Data,0,threshold_1)
 
 Average_Output_Data=Find_Average(Peak_Data,1,threshold_1)
 
-Single_Start = 3220
+Single_Start = 2604
+Single_End = 2608
+threshold_2 = -100
+
+Single_Peak_Data= Collect_Peak_Data(bins,count,folder_path,file_list,Single_Start,Single_End,Output_Start,Output_End,threshold_2,1)
+
+Single_Average_Input_Data=Find_Average(Single_Peak_Data,0,threshold_2)
+
+fig,(ax1,ax2,ax3)=plt.subplots(3)
+fig.suptitle('Average RC Near IOC at Each Temperature', size=20)
+
+ax1.set_title("Input RC vs Temp")
+ax1.plot(temp,Average_Input_Data, label='M0003701')
+
+ax1.set(ylabel="Reflection Coefficient (dB)")
+print("M0003701 Input")
+print("Average: ", np.average(Average_Input_Data)," Var: ", np.var(Average_Input_Data), " Stdev: ", np.std(Average_Input_Data))
+print(Average_Input_Data)
+print()
+
+
+ax2.set_title("Output RC vs Temp")
+ax2.plot(temp,Average_Output_Data,label='M0003701')
+print("M0003701 Output")
+print("Average: ", np.average(Average_Output_Data)," Var: ", np.var(Average_Output_Data), " Stdev: ", np.std(Average_Output_Data))
+print(Average_Output_Data)
+print()
+
+ax2.set(ylabel="Reflection Coefficient (dB)")
+
+
+
+ax3.set_title("6~7mm from Output RC vs Temp")
+ax3.plot(temp,Single_Average_Input_Data,label='M0003701')
+print("M0003701 Single")
+print("Average: ", np.average(Single_Average_Input_Data)," Var: ", np.var(Single_Average_Input_Data), " Stdev: ", np.std(Single_Average_Input_Data))
+print(Single_Average_Input_Data)
+print()
+ax3.set(xlabel="Temperature ('C)")
+ax3.set(ylabel="Reflection Coefficient (dB)")
+
+
+# M0003709
+
+folder_path='C:/OFDR_DATA_FOR_GRAPH/M0003709'
+file_list=os.listdir(folder_path)
+Peak_Data=[[],[]]
+
+Input_Start=3185
+Input_End=3191
+Output_Start = 3214
+Output_End = 3219
+threshold_1=-90
+count=2
+
+Peak_Data= Collect_Peak_Data(bins,count,folder_path,file_list,Input_Start,Input_End,Output_Start,Output_End,threshold_1,0)
+
+Average_Input_Data=Find_Average(Peak_Data,0,threshold_1)
+
+Average_Output_Data=Find_Average(Peak_Data,1,threshold_1)
+
+Single_Start = 3222
 Single_End = 3226
 threshold_2 = -100
 
@@ -171,38 +232,121 @@ Single_Peak_Data= Collect_Peak_Data(bins,count,folder_path,file_list,Single_Star
 
 Single_Average_Input_Data=Find_Average(Single_Peak_Data,0,threshold_2)
 
-plt.subplot(311)
-plt.title("Input RC vs Temp")
-plt.plot(temp,Average_Input_Data, label='M0003709')
-plt.legend()
-plt.xlabel("Temperature ('C)")
-plt.ylabel("Reflection Coefficient (dB)")
+ax1.plot(temp,Average_Input_Data, label='M0003709')
+ax2.plot(temp,Average_Output_Data,label='M0003709')
+ax3.plot(temp,Single_Average_Input_Data,label='M0003709')
+
 print("M0003709 Input")
 print("Average: ", np.average(Average_Input_Data)," Var: ", np.var(Average_Input_Data), " Stdev: ", np.std(Average_Input_Data))
 print(Average_Input_Data)
 print()
-
-plt.subplot(312)
-plt.title("Output RC vs Temp")
-plt.plot(temp,Average_Output_Data,label='M0003709')
 print("M0003709 Output")
 print("Average: ", np.average(Average_Output_Data)," Var: ", np.var(Average_Output_Data), " Stdev: ", np.std(Average_Output_Data))
 print(Average_Output_Data)
 print()
-plt.xlabel("Temperature ('C)")
-plt.ylabel("Reflection Coefficient (dB)")
-plt.legend()
-
-plt.subplot(313)
-plt.title("6~7mm from Output RC vs Temp")
-plt.plot(temp,Single_Average_Input_Data,label='M0003709')
 print("M0003709 Single")
 print("Average: ", np.average(Single_Average_Input_Data)," Var: ", np.var(Single_Average_Input_Data), " Stdev: ", np.std(Single_Average_Input_Data))
 print(Single_Average_Input_Data)
 print()
-plt.xlabel("Temperature ('C)")
-plt.ylabel("Reflection Coefficient (dB)")
-plt.legend()
+
+
+# M0003999
+
+folder_path='C:/OFDR_DATA_FOR_GRAPH/M0003999'
+file_list=os.listdir(folder_path)
+Peak_Data=[[],[]]
+
+Input_Start=3654
+Input_End=3663
+Output_Start = 3685
+Output_End = 3691
+threshold_1=-90
+count=2
+
+Peak_Data= Collect_Peak_Data(bins,count,folder_path,file_list,Input_Start,Input_End,Output_Start,Output_End,threshold_1,0)
+
+Average_Input_Data=Find_Average(Peak_Data,0,threshold_1)
+
+Average_Output_Data=Find_Average(Peak_Data,1,threshold_1)
+
+Single_Start = 3691
+Single_End = 3700
+threshold_2 = -100
+
+Single_Peak_Data= Collect_Peak_Data(bins,count,folder_path,file_list,Single_Start,Single_End,Output_Start,Output_End,threshold_2,1)
+
+Single_Average_Input_Data=Find_Average(Single_Peak_Data,0,threshold_2)
+
+ax1.plot(temp,Average_Input_Data, label='M0003999')
+ax2.plot(temp,Average_Output_Data,label='M0003999')
+ax3.plot(temp,Single_Average_Input_Data,label='M0003999')
+
+print("M0003999 Input")
+print("Average: ", np.average(Average_Input_Data)," Var: ", np.var(Average_Input_Data), " Stdev: ", np.std(Average_Input_Data))
+print(Average_Input_Data)
+print()
+print("M0003999 Output")
+print("Average: ", np.average(Average_Output_Data)," Var: ", np.var(Average_Output_Data), " Stdev: ", np.std(Average_Output_Data))
+print(Average_Output_Data)
+print()
+print("M0003999 Single")
+print("Average: ", np.average(Single_Average_Input_Data)," Var: ", np.var(Single_Average_Input_Data), " Stdev: ", np.std(Single_Average_Input_Data))
+print(Single_Average_Input_Data)
+print()
+#
+# # M0003991
+#
+# folder_path='C:/OFDR_DATA_FOR_GRAPH/M0003991'
+# file_list=os.listdir(folder_path)
+# Peak_Data=[[],[]]
+#
+# Input_Start=2970
+# Input_End=2979
+# Output_Start = 2985
+# Output_End =
+# threshold_1=-90
+# count=2
+#
+# Peak_Data= Collect_Peak_Data(bins,count,folder_path,file_list,Input_Start,Input_End,Output_Start,Output_End,threshold_1,0)
+#
+# Average_Input_Data=Find_Average(Peak_Data,0,threshold_1)
+#
+# Average_Output_Data=Find_Average(Peak_Data,1,threshold_1)
+#
+# Single_Start = 3691
+# Single_End = 3700
+# threshold_2 = -100
+#
+# Single_Peak_Data= Collect_Peak_Data(bins,count,folder_path,file_list,Single_Start,Single_End,Output_Start,Output_End,threshold_2,1)
+#
+# Single_Average_Input_Data=Find_Average(Single_Peak_Data,0,threshold_2)
+#
+# ax1.plot(temp,Average_Input_Data, label='M0003999')
+# ax2.plot(temp,Average_Output_Data,label='M0003999')
+# ax3.plot(temp,Single_Average_Input_Data,label='M0003999')
+#
+# print("M0003999 Input")
+# print("Average: ", np.average(Average_Input_Data)," Var: ", np.var(Average_Input_Data), " Stdev: ", np.std(Average_Input_Data))
+# print(Average_Input_Data)
+# print()
+# print("M0003999 Output")
+# print("Average: ", np.average(Average_Output_Data)," Var: ", np.var(Average_Output_Data), " Stdev: ", np.std(Average_Output_Data))
+# print(Average_Output_Data)
+# print()
+# print("M0003999 Single")
+# print("Average: ", np.average(Single_Average_Input_Data)," Var: ", np.var(Single_Average_Input_Data), " Stdev: ", np.std(Single_Average_Input_Data))
+# print(Single_Average_Input_Data)
+# print()
+
+
+
+
+
+ax1.legend(loc=2)
+ax2.legend(loc=2)
+ax3.legend(loc=2)
+plt.tight_layout()
+plt.show()
 
 
 
@@ -341,5 +485,3 @@ plt.legend()
 
 
 
-plt.tight_layout()
-plt.show()
