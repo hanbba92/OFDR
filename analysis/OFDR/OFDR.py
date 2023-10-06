@@ -176,8 +176,9 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.fig_view = self.MultiplePlotView
         # setHtml has a 2MB size limit, need to switch to setUrl on tmp file
         # for large figures.
-        fig.write_html('C:/NONE/file.html')
-        self.fig_view.load(QUrl.fromLocalFile('C:/NONE/file.html'))
+        plot_path= self.data_path + '/' + 'file.html'
+        fig.write_html(plot_path)
+        self.fig_view.load(QUrl.fromLocalFile(plot_path))
         self.fig_view.show()
         if fig['data']:
             self.RunMessageplainTextEdit.appendPlainText('Plot Update Completed!')
@@ -267,6 +268,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         with open('OFDR_TLS_8164A.json', 'r') as f:
             settings_dict_TLS_8164A = json.load(f)
         self.measured_time = datetime.datetime.now()
+        self.TemperatureText.setReadOnly(True)
         worker_Run_TLS_8164A=Work_Run_TLS_8164A(self.tel,settings_dict_TLS_8164A)
         worker_Run_TLS_8164A.signals.finished.connect(self.Run_worker_single_Gage)
         self.threadpool.start(worker_Run_TLS_8164A)
@@ -320,6 +322,7 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         self.IterationTimeText.setReadOnly(False)
         self.TotalTimeText.setReadOnly(False)
         self.ModelSerialNumber.setReadOnly(False)
+        self.TemperatureText.setReadOnly(False)
 
 
 
@@ -402,17 +405,21 @@ class Analysis_OFDR_Window(QMainWindow,form_class_Analysis_OFDR,object):
         arr = np.array([x,y])
         if not os.path.exists(self.save_file_path):
             os.makedirs(self.save_file_path)
-        rm = pyvisa.ResourceManager()
         self.my_instrument = 0
-        for i in rm.list_resources():
-            if i[0] == 'G':
-                self.my_instrument = rm.open_resource(i)
-                break
+        if self.ChamberCheckBox.isChecked():
+
+            rm = pyvisa.ResourceManager()
+
+            for i in rm.list_resources():
+                if i[0] == 'G':
+                    print(i)
+                    self.my_instrument = rm.open_resource(i)
+                    break
         if self.my_instrument:
             self.message = self.my_instrument.query('TEMP?')
             self.cur_temp=self.message.split(',')[0]
         else:
-            self.cur_temp= 'NONE'
+            self.cur_temp= self.TemperatureText.text()
 
         self.file_path=self.save_file_path+'/'+self.measured_time.strftime('%Y_%m_%d_%H.%M.%S_')+self.cur_temp
         self.RunMessageplainTextEdit.appendPlainText(self.file_path+'.npy'+' saved.')
